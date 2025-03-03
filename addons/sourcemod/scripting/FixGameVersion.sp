@@ -42,7 +42,7 @@ void ApplyPatches(GameData gameData)
 	// Iterate our patch names (these are dependent on what's in gamedata)
 	for (int i = 0; i < sizeof(g_sPatchNames); i++)
 	{
-		char patchName[64];
+		char patchName[256];
 		Format(patchName, sizeof(patchName), g_sPatchNames[i]);
 
 		// Get the location of this patches signature
@@ -54,7 +54,7 @@ void ApplyPatches(GameData gameData)
 			continue;
 		}
 
-		char cappingOffsetName[64];
+		char cappingOffsetName[256];
 		Format(cappingOffsetName, sizeof(cappingOffsetName), "CappingOffset_%s", patchName);
 
 		// Get how many bytes we should move forward from the signature location before starting patching
@@ -69,35 +69,46 @@ void ApplyPatches(GameData gameData)
 		// Get patch location
 		addr += view_as<Address>(cappingOffset);
 
-		char patchBytesName[64];
+		char patchBytesName[256];
 		Format(patchBytesName, sizeof(patchBytesName), "PatchBytes_%s", patchName);
 
-		// Address patchBytes = gameData.GetMemSig(patchBytesName);
+		Address patchBytesAddr = gameData.GetMemSig(patchBytesName);
 
-		// if (patchBytes == Address_Null)
-		// {
-		// 	LogError("%s patch failed: Can't find patch %s in gamedata.", patchName, patchBytesName);
-		// 	continue;
-		// }
+		if (patchBytesAddr == Address_Null)
+		{
+			LogError("%s patch failed: Can't find patch %s in gamedata.", patchName, patchBytesName);
+			continue;
+		}
 
-		int patchBytes[] = {0xB8, 0x00, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x10};
+		char patchBytesLengthName[256];
+		Format(patchBytesLengthName, sizeof(patchBytesLengthName), "PatchBytesLength_%s", patchName);
+
+		int patchBytesLength = gameData.GetOffset(patchBytesLengthName);
+
+		if (patchBytesLength == -1)
+		{
+			LogError("%s patch failed: Can't find %s offset in gamedata.", patchName, patchBytesLengthName);
+			continue;
+		}
 
 		// Store this patches address and byte count as it's being applied for unpatching on plugin unload
 		g_aPatchedAddresses[i] = addr;
-		g_iPatchedByteCount[i] = sizeof(patchBytes);
+		g_iPatchedByteCount[i] = patchBytesLength;
 
 		// Iterate each byte we need to patch
-		for (int j = 0; j < sizeof(patchBytes); j++)
+		for (int j = 0; j < patchBytesLength; j++)
 		{
 			// Store the original byte here for unpatching on plugin unload
 			g_iPatchedBytes[i][j] = LoadFromAddress(addr, NumberType_Int8);
+			int patchByte = LoadFromAddress(patchBytesAddr, NumberType_Int8);
 
-			LogMessage("patching with %x %x", patchBytes[j], g_iPatchedBytes[i][j]);
+			LogMessage("patching with %x %x", patchByte, g_iPatchedBytes[i][j]);
 			// NOP this byte
-			StoreToAddress(addr, patchBytes[j], NumberType_Int8);
+			StoreToAddress(addr, patchByte, NumberType_Int8);
 
 			// Move on to next byte
 			addr++;
+			patchBytesAddr++;
 		}
 	}
 }

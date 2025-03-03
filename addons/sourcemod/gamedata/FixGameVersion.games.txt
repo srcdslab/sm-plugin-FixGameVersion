@@ -11,6 +11,7 @@
 			}
 			"PatchBytes_nVersionCheck"
 			{
+				"library"	"engine"
 				"linux"		"\xB8\x00\x00\x00\x00\x83\xC4\x10"
 			}
 		}
@@ -19,6 +20,10 @@
 			"CappingOffset_nVersionCheck"
 			{
 				"linux"		"0"
+			}
+			"PatchBytesLength_nVersionCheck"
+			{
+				"linux"		"8"
 			}
 		}
 	}
